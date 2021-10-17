@@ -20,7 +20,7 @@ This dataset contains more than 3 million online grocery orders from more than 2
 
 Then, do or answer the following (commenting on the results of each):
 
-### How many aisles are there, and which aisles are the most items ordered from?
+1. How many aisles are there, and which aisles are the most items ordered from?
 
 ```{r}
 aisle =
@@ -36,7 +36,7 @@ aisle_rank =
 
 There are **`r nrow(aisle)`** aisles and the most items ordered from is **`r pull(aisle_rank, aisle)`**.
 
-### Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+2. Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
 
 ```{r}
 instacart %>% 
@@ -57,7 +57,7 @@ instacart %>%
 ```
 
 
-### Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+3. Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
 
 ```{r}
 instacart  %>%  
@@ -70,7 +70,7 @@ instacart  %>%
   knitr::kable()
 ```
 
-### Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+4. Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 
 ```{r}
 instacart  %>%  
@@ -83,7 +83,7 @@ instacart  %>%
                             `0` = "Sun", 
                             `1` = "Mon",
                             `2` = "Tue",
-                            `3` = "Wen",
+                            `3` = "Wed",
                             `4` = "Thu",
                             `5` = "Fri",
                             `6` = "Sat")) %>% 
@@ -92,5 +92,83 @@ instacart  %>%
     values_from = mean
   ) %>% 
   knitr::kable()
+```
+
+# Problem 2
+
+First, do some data cleaning:
+
+```{r}
+data("brfss_smart2010") 
+
+brfss_smart2010 = 
+  brfss_smart2010 %>% 
+  janitor::clean_names() %>% 
+  filter(topic == "Overall Health", response == c("Excellent", "Very good", "Good", "Fair", "Poor")) %>% 
+  mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very good","Excellent" )))
+
+```
+
+Using this dataset, do or answer the following (commenting on the results of each):
+
+1. In 2002, which states were observed at 7 or more locations? What about in 2010?
+
+```{r}
+question1 = 
+  brfss_smart2010 %>% 
+  group_by(year, locationabbr, locationdesc) %>% 
+  summarize(n_obs = n_distinct(locationdesc)) %>%
+  mutate(n_sum = sum(n_obs))  
+
+# year = 2002
+question1 %>% 
+  filter(year == 2002, n_sum > 6)  
+
+# year = 2010
+question1 %>% 
+  filter(year == 2010, n_sum > 6) %>% 
+  group_by(locationabbr)
+
+```
+
+In 2002, no state was observed at 7 or more locations. In 2010, Florida was observed at 7 or more locations.
+
+2. Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
+
+```{r}
+question2 = 
+  brfss_smart2010 %>% 
+  filter(response == "Excellent") %>%
+  group_by(year, locationabbr) %>% 
+  summarize(
+    mean = mean(data_value)
+  ) 
+
+question2
+
+question2 %>% 
+  group_by(year, locationabbr) %>% 
+  ggplot(aes(x = year, y = mean, color = locationabbr)) +
+  geom_point(alpha = .5) +
+  geom_line() +
+  labs(
+    title = "Average Value Over Time",
+    x = "Year",
+    y = "Average Value"
+  ) 
+  
+```
+
+3. Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
+
+```{r}
+brfss_smart2010 %>% 
+  filter(year %in% c(2006, 2010), locationabbr == "NY") %>%
+  ggplot(aes(x = response, y = data_value, color = year)) + 
+  geom_point() +
+  facet_grid(. ~ year) +
+  labs(
+    title = "Distribution of data_value for Responses in 2006 and 2010",
+  ) 
 ```
 
