@@ -1,29 +1,96 @@
 ---
 title: "P8105_hw3_xh2470"
 author: "Xueqing Huang"
-output: html_document
+output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Problem 1
+
+```{r}
+options(warn = -1)
+library(tidyverse)
+library(p8105.datasets)
+data("instacart")
 ```
 
-## R Markdown
+Write a short description of the dataset.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+This dataset contains more than 3 million online grocery orders from more than 200,000 Instacart users, with  **`r nrow(instacart)`** rows and **`r ncol(instacart)`** columns. Variables contain _`r names(instacart)`_.  Examples of key observations. are:
+`r knitr::kable(head(select(instacart, order_id : order_hour_of_day)))` 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Then, do or answer the following (commenting on the results of each):
 
-```{r cars}
-summary(cars)
+### How many aisles are there, and which aisles are the most items ordered from?
+
+```{r}
+aisle =
+  instacart  %>%  
+  group_by(aisle) %>% 
+  summarize(n_obs = n()) 
+  
+aisle_rank = 
+  aisle %>% 
+  mutate(rank = min_rank(desc(n_obs))) %>% 
+  filter(rank == 1)
 ```
 
-## Including Plots
+There are **`r nrow(aisle)`** aisles and the most items ordered from is **`r pull(aisle_rank, aisle)`**.
 
-You can also embed plots, for example:
+### Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+instacart %>% 
+  group_by(aisle) %>% 
+  summarize(n_obs = n()) %>%
+  filter(n_obs > 10000) %>% 
+  ggplot(aes(x = aisle, y = n_obs, color = aisle)) +
+  geom_point(alpha = .5) +
+  labs(
+    title = "Number of items",
+    x = "Aisle",
+    y = "Numer of items",
+    caption = "Only contain aisles with more than 10000 items."
+  ) +
+  scale_x_discrete(
+    label = NULL
+  ) 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+### Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+
+```{r}
+instacart  %>%  
+  filter(aisle == c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
+  group_by(aisle, product_name) %>% 
+  summarize(number = n()) %>% 
+  mutate(ranking = min_rank(desc(number))) %>% 
+  filter(ranking < 4) %>% 
+  arrange(aisle, ranking) %>% 
+  knitr::kable()
+```
+
+### Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+```{r}
+instacart  %>%  
+  filter(product_name == c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
+  group_by(product_name, order_dow) %>%
+  summarize(
+    mean = mean(order_hour_of_day)
+  ) %>% 
+  mutate(order_dow = recode(order_dow, 
+                            `0` = "Sun", 
+                            `1` = "Mon",
+                            `2` = "Tue",
+                            `3` = "Wen",
+                            `4` = "Thu",
+                            `5` = "Fri",
+                            `6` = "Sat")) %>% 
+  pivot_wider(
+    names_from = order_dow,
+    values_from = mean
+  ) %>% 
+  knitr::kable()
+```
+
