@@ -15,8 +15,10 @@ data("instacart")
 
 Write a short description of the dataset.
 
-This dataset contains more than 3 million online grocery orders from more than 200,000 Instacart users, with  **`r nrow(instacart)`** rows and **`r ncol(instacart)`** columns. Variables contain _`r names(instacart)`_.  Examples of key observations. are:
-`r knitr::kable(head(select(instacart, order_id : order_hour_of_day)))` 
+This dataset contains more than 3 million online grocery orders from more than 200,000 Instacart users, with  **`r nrow(instacart)`** rows and **`r ncol(instacart)`** columns. Variables contain _`r names(instacart)`_.  Some key observations are:
+`r knitr::kable(head(instacart))` 
+
+Take the first observation as an example. Bulgarian Yogurt which belonged to the department of dairy eggs was ordered. Also, it gave us the information of the day of the week and the hour of the day on which the order was placed.
 
 Then, do or answer the following (commenting on the results of each):
 
@@ -43,16 +45,14 @@ instacart %>%
   group_by(aisle) %>% 
   summarize(n_obs = n()) %>%
   filter(n_obs > 10000) %>% 
-  ggplot(aes(x = aisle, y = n_obs, color = aisle)) +
+  mutate(aisle = fct_reorder(aisle, n_obs)) %>% 
+  ggplot(aes(x = n_obs, y = aisle)) +
   geom_point(alpha = .5) +
   labs(
-    title = "Number of items",
-    x = "Aisle",
-    y = "Numer of items",
+    title = "Number of items ordered in each aisle",
+    x = "Numer of items",
+    y = "Aisle",
     caption = "Only contain aisles with more than 10000 items."
-  ) +
-  scale_x_discrete(
-    label = NULL
   ) 
 ```
 
@@ -61,7 +61,7 @@ instacart %>%
 
 ```{r}
 instacart  %>%  
-  filter(aisle == c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
   group_by(aisle, product_name) %>% 
   summarize(number = n()) %>% 
   mutate(ranking = min_rank(desc(number))) %>% 
@@ -74,19 +74,11 @@ instacart  %>%
 
 ```{r}
 instacart  %>%  
-  filter(product_name == c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
   group_by(product_name, order_dow) %>%
   summarize(
     mean = mean(order_hour_of_day)
   ) %>% 
-  mutate(order_dow = recode(order_dow, 
-                            `0` = "Sun", 
-                            `1` = "Mon",
-                            `2` = "Tue",
-                            `3` = "Wed",
-                            `4` = "Thu",
-                            `5` = "Fri",
-                            `6` = "Sat")) %>% 
   pivot_wider(
     names_from = order_dow,
     values_from = mean
@@ -104,8 +96,8 @@ data("brfss_smart2010")
 brfss_smart2010 = 
   brfss_smart2010 %>% 
   janitor::clean_names() %>% 
-  filter(topic == "Overall Health", response == c("Excellent", "Very good", "Good", "Fair", "Poor")) %>% 
-  mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very good","Excellent" )))
+  filter(topic == "Overall Health", response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>% 
+  mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very good","Excellent" )))   #organize responses as a factor 
 
 ```
 
@@ -114,29 +106,28 @@ Using this dataset, do or answer the following (commenting on the results of eac
 1. In 2002, which states were observed at 7 or more locations? What about in 2010?
 
 ```{r}
-question1 = 
+p2_q1 = #problem2_question1
   brfss_smart2010 %>% 
-  group_by(year, locationabbr, locationdesc) %>% 
-  summarize(n_obs = n_distinct(locationdesc)) %>%
-  mutate(n_sum = sum(n_obs))  
+  group_by(year, locationabbr) %>% 
+  summarize(n_obs = n_distinct(locationdesc))
 
 # year = 2002
-question1 %>% 
-  filter(year == 2002, n_sum > 6)  
+p2_q1 %>% 
+  filter(year == 2002, n_obs > 6) %>% 
+  knitr::kable()
 
 # year = 2010
-question1 %>% 
-  filter(year == 2010, n_sum > 6) %>% 
-  group_by(locationabbr)
-
+p2_q1 %>% 
+  filter(year == 2010, n_obs > 6) %>% 
+  knitr::kable()
 ```
 
-In 2002, no state was observed at 7 or more locations. In 2010, Florida was observed at 7 or more locations.
+In 2002, there were **6** states that were observed at 7 or more locations, which were **CT, FL, MA, NC, NJ, and PA**. In 2010, there were **14** states that were observed at 7 or more locations, which were **CA, CO,FL, MA, MD, NC, NE, NJ, NY, OH, PA, SC, TX, and WA**. 
 
 2. Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
 
 ```{r}
-question2 = 
+p2_q2 = # problem2_qustion2
   brfss_smart2010 %>% 
   filter(response == "Excellent") %>%
   group_by(year, locationabbr) %>% 
@@ -144,9 +135,9 @@ question2 =
     mean = mean(data_value)
   ) 
 
-question2
+p2_q2
 
-question2 %>% 
+p2_q2 %>% 
   group_by(year, locationabbr) %>% 
   ggplot(aes(x = year, y = mean, color = locationabbr)) +
   geom_point(alpha = .5) +
@@ -164,11 +155,76 @@ question2 %>%
 ```{r}
 brfss_smart2010 %>% 
   filter(year %in% c(2006, 2010), locationabbr == "NY") %>%
-  ggplot(aes(x = response, y = data_value, color = year)) + 
+  ggplot(aes(x = data_value, y = locationdesc, color = response)) + 
   geom_point() +
   facet_grid(. ~ year) +
   labs(
-    title = "Distribution of data_value for Responses in 2006 and 2010",
+    title = "Distribution of data_value for Responses in 2006 and 2010"
   ) 
 ```
 
+
+# Problem 3
+
+1.Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+
+```{r}
+data = read_csv("./data/accel_data.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(weekday_vs_weekend = ifelse(day %in% c("Saturday", "Sunday"), "weekend", "weekday")) %>%      # add weekday_vs_weekend variable
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "activity_time",
+    values_to = "activity_value"
+  ) %>% 
+  separate(activity_time, into = c("activity", "minute"), sep = 9) %>%  # simplify activity_time
+  select(-activity) 
+```
+
+This dataset collects accelerometer data of a 63 year-old male with BMI 25. It shows the activity value for each minute of a 24-hour day for the duration of 5 weeks. It contains   **`r nrow(data)`** rows and **`r ncol(data)`** columns. Variables contain _`r names(data)`_.
+
+
+2.Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+
+```{r}
+p3_q2 =  # Problem3_question2
+  data %>% 
+  group_by(day_id) %>%
+  summarize(total = sum(activity_value)) 
+
+knitr::kable(p3_q2) 
+
+ggplot(p3_q2, aes(x = day_id, y = total)) +
+  geom_point(alpha = .5) +
+  geom_line() +
+  labs(
+    title = "Total Activity Value of Each Day",
+    x = "Day",
+    y = "Total Activity Value "
+  ) +
+  scale_x_continuous(
+    breaks = c(0,5,10,15,20,25,30,35))
+```
+
+The activity value of this person was fluctuated. In general, he was more active in the first half of the study than the second half.  
+
+3. Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
+
+```{r}
+data %>% 
+  mutate(hour = floor(as.numeric(minute)/60)) %>% 
+  group_by(day_id, day, hour) %>% 
+  summarize(activity_of_hour = sum(activity_value)) %>% 
+  ggplot(aes(x = hour , y = activity_of_hour, color = day)) +
+  geom_line() + 
+  labs(
+    title = "Activity Value of a Day",
+    x = "Hour",
+    y = "Activity Value "
+  ) +
+  scale_x_continuous(
+    breaks = c(0,4,8,12,16,20,24)
+    )
+```
+
+This plot shows the 24-hour activity time courses of this person. From the plot, we can conclude that this person was more acted at night than other time on weekday, and more acted in the morning and noon than other time on weekend.  
